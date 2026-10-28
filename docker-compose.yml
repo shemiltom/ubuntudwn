@@ -1,0 +1,51 @@
+version: '3'
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: opensearch
+    restart: unless-stopped
+    environment:
+      - cluster.name=graylog
+      - node.name=opensearch
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+
+  graylog:
+    image: graylog/graylog:5.2
+    container_name: graylog
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - opensearch
+    ports:
+      - "514:514/udp"
+      - "514:514/tcp"
+      - "9000:9000"
+      - "5044:5044"
+    environment:
+      - GRAYLOG_PASSWORD_SECRET=some_very_long_secret_string_change_me_123456
+      - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      - GRAYLOG_HTTP_BIND_ADDRESS=0.0.0.0:9000
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://192.168.56.30:9000/
+    volumes:
+      - graylog_data:/usr/share/graylog/data
+
+volumes:
+  mongodb_data:
+  opensearch_data:
+  graylog_data:
